@@ -1,13 +1,13 @@
 const express = require("express");
 const Application = require("../models/Application");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
 // ==================== CREATE APPLICATION ====================
-router.post("/", async (req, res) => {
+router.post("/", authMiddleware, async (req, res) => {
   try {
     const {
-      userId,
       applicantName,
       businessName,
       category,
@@ -17,9 +17,7 @@ router.post("/", async (req, res) => {
       schemeName,
     } = req.body;
 
-    // Check required fields
     if (
-      !userId ||
       !applicantName ||
       !businessName ||
       !category ||
@@ -33,12 +31,10 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Generate application ID
     const applicationId = `SS-${Date.now()}`;
 
-    // Create application
     const application = await Application.create({
-      userId,
+      userId: req.user.userId,
       applicantName,
       businessName,
       category,
@@ -65,19 +61,18 @@ router.post("/", async (req, res) => {
 });
 
 
-// ==================== GET USER APPLICATIONS ====================
-router.get("/user/:userId", async (req, res) => {
+// ==================== GET MY APPLICATIONS ====================
+router.get("/my", authMiddleware, async (req, res) => {
   try {
     const applications = await Application.find({
-      userId: req.params.userId,
+      userId: req.user.userId,
     }).sort({ createdAt: -1 });
 
     res.json({
+      count: applications.length,
       applications,
     });
   } catch (error) {
-    console.error("Fetch applications error:", error);
-
     res.status(500).json({
       message: "Failed to fetch applications",
       error: error.message,
@@ -85,5 +80,80 @@ router.get("/user/:userId", async (req, res) => {
   }
 });
 
+
+// ==================== GET SINGLE APPLICATION ====================
+router.get("/:id", authMiddleware, async (req, res) => {
+  try {
+    const application = await Application.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
+    if (!application) {
+      return res.status(404).json({
+        message: "Application not found",
+      });
+    }
+
+    res.json({
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to fetch application",
+      error: error.message,
+    });
+  }
+});
+
+
+// ==================== UPDATE APPLICATION STATUS ====================
+// Prototype/admin simulation
+router.put("/:id/status", async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const allowedStatuses = [
+      "Submitted",
+      "Under Review",
+      "Documents Required",
+      "Approved",
+      "Rejected",
+      "Disbursed",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid application status",
+      });
+    }
+
+    const application = await Application.findByIdAndUpdate(
+      req.params.id,
+      {
+        status,
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!application) {
+      return res.status(404).json({
+        message: "Application not found",
+      });
+    }
+
+    res.json({
+      message: "Application status updated",
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to update application status",
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;

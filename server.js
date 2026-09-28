@@ -6,6 +6,9 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const schemeRoutes = require("./routes/schemeRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
+const userRoutes = require("./routes/userRoutes");
+const financialRoutes = require("./routes/financialRoutes");
+const partnerRoutes = require("./routes/partnerRoutes");
 
 const app = express();
 
@@ -15,8 +18,11 @@ app.use(express.json());
 
 // ==================== ROUTES ====================
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/schemes", schemeRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/financial", financialRoutes);
+app.use("/api/partners", partnerRoutes);
 
 // ==================== AUTH TEST ====================
 app.get("/api/auth/test", (req, res) => {
